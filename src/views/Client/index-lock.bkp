@@ -1,0 +1,233 @@
+import React, { useState, useEffect } from 'react';
+import {Redirect} from 'react-router-dom'
+import * as S from './styles';
+import {format} from 'date-fns';
+
+import { TextField, TextareaAutosize, Checkbox, Button } from '@material-ui/core';
+import Select from '@material-ui/core/Select';
+import MenuItem from '@material-ui/core/MenuItem';
+import { makeStyles } from '@material-ui/core/styles';
+
+import api from '../../services/api';
+import isConnected from '../../utils/isConnected';
+
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
+
+import iconClient from '../../assets/images/icons/yellow/icon_cliente.png';
+import iconCalendar from '../../assets/images/icons/blue/icon_date.png';
+
+const useStyles = makeStyles({
+  root: {
+    background: 'linear-gradient(45deg, #FE6B8B 30%, #FF8E53 90%)',
+    border: 0,
+    borderRadius: 3,
+    boxShadow: '0 3px 5px 2px rgba(255, 105, 135, .3)',
+    color: 'white',
+    height: 48,
+    padding: '0 30px',
+  },
+});
+
+function Client({match}) {
+  const [redirect, setRedirect] = useState(false);
+  const [id, setId] = useState();
+  const [status, setStatus] = useState(false);
+  const [name, setName] = useState();
+  const [whatsapp, setWhatsApp] = useState();
+  const [email, setEmail] = useState();
+  const [address, setAddress] = useState();
+  const [sexy, setSexy] = useState();
+  const [birthday, setBirthday] = useState();
+  const [date, setDate] = useState();
+
+  const classes = useStyles();
+
+  const handleChange = (event) => {
+    setSexy(event.target.value);
+  };
+
+  async function LoadClientDetails() {
+    await api.get(`/client/${match.params.id}`)
+    .then(response => {
+      setName(response.data.name)
+      setWhatsApp(response.data.whatsapp)
+      setEmail(response.data.email)
+      setAddress(response.data.address)
+      setSexy(response.data.sexy)
+      setBirthday(format(new Date(response.data.birthday), 'yyyy-MM-dd'))
+      setDate(format(new Date(response.data.when), 'yyyy-MM-dd'))
+      setStatus(response.data.status)
+    })
+  }
+
+  async function Save() {
+    if(!name)
+      return alert("Você precisa informar o nome do cliente!")
+    else if(!whatsapp)
+      return alert("Você precisa informar número do whatsapp do cliente!")
+    else if(!email)
+      return alert("Você precisa informar o e-mail do cliente!")
+    else if(!sexy)
+      return alert("Você precisa informar o sexo do cliente!")
+
+    if(match.params.id) {
+      await api.put(`/client/${match.params.id}`, {
+        macaddress: isConnected,
+        name,
+        whatsapp,
+        email,
+        address,
+        sexy,
+        birthday,
+        status    
+      }).then(() => 
+        setRedirect(true)
+      )
+
+    } else {
+      await api.post('/client', {
+        macaddress: isConnected,
+        name,
+        whatsapp,
+        email,
+        address,
+        sexy,
+        birthday,
+        status
+      }).then(() => 
+          setRedirect(true)
+      ).catch(response => {
+        alert(response.data.error)
+      })
+    }
+  }
+
+  async function Remove(){
+    const res = window.confirm('Deseja realmente remover esse CLIENTE?')
+    if(res == true){
+      await api.delete(`/client/${match.params.id}`)
+      .then(() => setRedirect(true));
+    }
+  }
+
+  useEffect(() => {
+    if(!isConnected)
+      setRedirect(true);
+      
+    LoadClientDetails();
+  }, [LoadClientDetails])
+
+  return (
+    <S.Container>
+      { redirect && <Redirect to="/" /> }
+      <Header />
+
+      <S.Form>
+        <S.TypeIcons>
+          <div>   
+            <img src={iconClient} alt="" />
+            <span>{match.params.id ? 'Alterar registro' : 'Incluir novo registro'}</span>
+          </div>
+        </S.TypeIcons>
+
+        <S.Input>
+          <TextField
+            required
+            variant="outlined"
+            label="Nome do cliente..."
+            onChange={e => setName(e.target.value)} 
+            value={name}
+          />
+        </S.Input>
+
+        <S.Input>
+          <TextField
+            required
+            variant="outlined"
+            label="WhatsApp do cliente..."
+            onChange={e => setWhatsApp(e.target.value)} 
+            value={whatsapp}
+            type="tel"
+          /> 
+        </S.Input>
+
+        <S.Input>
+          <TextField
+            required
+            variant="outlined"
+            label="E-mail do cliente..."
+            onChange={e => setEmail(e.target.value)} 
+            value={email}
+            type="email"
+          /> 
+        </S.Input>
+
+        <S.Input>
+          <TextField
+            multiline
+            variant="outlined"
+            label="Endereço do cliente..."
+            defaultValue={e => setAddress(e.target.value)}
+            value={address}
+            rows={4}
+          />
+        </S.Input>
+
+        <S.Select>            
+            <Select
+                value={sexy}
+                onChange={e => setSexy(e.target.value)}
+              >
+              <MenuItem value="">
+                  <em>Selecion um item</em>
+              </MenuItem>
+              <MenuItem value={10}>Feminino</MenuItem>
+              <MenuItem value={20}>Masculino</MenuItem>
+            </Select>
+        </S.Select>
+
+        <S.Input>
+          <TextField
+            required
+            variant="outlined"
+            onChange={e => setBirthday(e.target.value)}
+            value={birthday}
+            type="date"
+          />
+          <img src={iconCalendar} alt=""/>
+        </S.Input>
+
+        <S.Options>
+          <div>
+            <Checkbox
+              checked={status}
+              onChange={() => setStatus(!status)}
+              inputProps={{ 'aria-label': 'default checkbox' }}
+            />
+            <span>Ativo</span>
+          </div>
+          { match.params.id && <button type="button" onClick={Remove}>Excluir</button> }
+        </S.Options>
+
+        <S.Save>
+          <Button
+          className={classes.root}
+            type="button"
+            fullWidth
+            variant="contained"
+            color="primary"
+            onClick={Save}
+          >
+            Salvar
+          </Button>
+        </S.Save>
+
+      </S.Form>
+
+      <Footer/>
+    </S.Container>
+  )
+}
+
+export default Client;
